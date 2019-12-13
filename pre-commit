@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+import sys
+import re
+from subprocess import check_output
+
+path_to_project_dir = 'SPECIFY_PROJECT_DIRECTORY'
+staged_files = check_output(['git', 'diff', '--cached', '--name-only']).strip()
+staged_files = staged_files.decode("utf-8")
+staged_files = staged_files.split('\n')
+issue_regex = r'(\s+|^)(?P<function>(print\(.*\)))(\s+|$)'
+
+
+def not_valid(line):
+    if re.match(issue_regex, line):
+        return bool(re.match(issue_regex, line).group('function'))
+    return False
+
+
+errors = []
+for file in staged_files:
+    with open(f'{path_to_project_dir}/{file}') as fp:
+        for line in fp.readlines():
+            if not_valid(line):
+                msg = f'''
+                Not all debug functions are removed in {file}\n
+                Debug info in: {line}\n
+                '''
+                errors.append(msg)
+
+if any(errors):
+    for error in errors:
+        print(error)
+
+    sys.exit(1)
